@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="shortcut icon" type="image/x-icon" href="https://static.codepen.io/assets/favicon/favicon-aec34940fbc1a6e787974dcd360f2c6b63348d4b1f4e06c77743096d55480f33.ico" />
+<link rel="mask-icon" type="" href="https://static.codepen.io/assets/favicon/logo-pin-8f3771b1072e3c38bd662872f6b673a722f4b3ca2421637d5596661b4e2132cc.svg" color="#111" />
+<title>CodePen - flipbook-refactor</title>
+<link rel="manifest" href="https://gist.githubusercontent.com/lucusp/b182baff345505346732ef5f6fc5b7ef/raw/e7b74eb74ded2947da6bb71f9f6fba462b485428/manifest.json" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name=”apple-mobile-web-app-capable” content=”yes”>
+<style>
+  @import url('https://fonts.googleapis.com/css?family=Spicy+Rice&display=swap');
+
+html, body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+#playground {
+  margin: 0;
+  padding: 0;
+  position: absolute;
+  height: 100%;
+  width: 100%;
+}
+
+canvas {
+  border: 1px solid #eee;
+}
+
+img {
+  background-color: #fff;
+  box-shadow: 0px 30px 30px -10px rgba(0,0,0,0.5);
+}
+
+button {
+  padding: 0;
+  border: none;
+  background-color: transparent;
+  text-align: center;
+  vertical-align: center;
+}
+
+
+#timeline {
+  position: absolute;
+  display: flex;
+  border: 0px solid red;
+  align-items: center;
+  overflow-x: scroll;
+  overflow-y: hidden;
+  white-space: nowrap;
+  height: 80px;
+  width: 400px;
+}
+
+.frames {
+  display: inline-block;
+  border: 1px solid #eee;
+  width: 100px;
+  height: 50px;
+  margin-left: 10px;
+}
+
+#addWrap {
+  border: 0;
+}
+
+#add {
+  position: absolute;
+  display: inline-block;
+  border: 2px dashed #aaa;
+  line-height: 40px;
+  font-size: 40px;
+  color: #000;
+  height: 50px;
+  width: 100px;
+}
+
+#landing {
+  display: flex;
+  position: absolute;
+  height: 100%;
+  width: 100%;
+  background-color: #14b5ff;
+  color: #fff;
+  text-align: center;
+  vertical-align: middle;
+  z-index: 100;
+}
+
+#landContain {
+  position: relative;
+  text-align: center;
+  width: 400px;
+  margin: auto;
+}
+
+#landing span {
+  margin: auto;
+  text-align: center;
+  font-size: 80px;
+  font-family: Spicy Rice;
+}
+
+#startBtn {
+  margin: 10px auto;
+  height: 50px;
+  width: 240px;
+  box-sizing: border-box;
+  padding: 0.75rem;
+  font-size: 1.5rem;
+  text-align: center;
+  text-transform: uppercase;
+  color: white;
+  border: none;
+  background: #ff7214;
+  border-radius: 0.5rem;
+  box-shadow: 0 0.25rem #8a4619;
+  outline: none;
+  cursor: pointer;
+}
+
+#startBtn:active {
+  transform: translateY(2px);
+  box-shadow: 0 0.125rem #8a4619;
+}
+</style>
+</head>
+<body translate="no">
+<div id="playground">
+</div>
+<script src='https://codepen.io/lucusp/pen/VwwpOaV.js'></script>
+<script src='https://kit.fontawesome.com/6beffe6955.js'></script>
+<script id="rendered-js">
+      let frames = [];
+let playback = false;
+var add = document.getElementById("add"),
+  del = document.getElementById("del"),
+  mirror,
+  playLoop;
+var playground = document.getElementById("playground");
+var windowW = window.innerWidth,
+  windowH = window.innerHeight;
+//console.log(windowW, windowH);
+
+//landing screen
+var landing = document.createElement("div");
+landing.id = "landing";
+document.body.appendChild(landing);
+
+var landContain = document.createElement("div");
+landContain.id = "landContain";
+landContain.innerHTML = "<span>FLYPPR</span>";
+landing.appendChild(landContain);
+
+var startBtn = document.createElement("button");
+startBtn.id = "startBtn";
+startBtn.innerHTML = "Start Drawing";
+landContain.appendChild(startBtn);
+
+//create init state
+
+//canvas
+var canvas = document.createElement("canvas");
+canvas.id = "flipbook";
+canvas.height = 200;
+canvas.width = 400;
+canvas.style.marginLeft = Math.floor(windowW / 2 - canvas.width / 2) + "px";
+canvas.style.marginTop = Math.floor(windowH / 2.5 - canvas.height / 2) + "px";
+canvas.style.position = "absolute";
+playground.appendChild(canvas);
+var ctx = canvas.getContext('2d');
+
+//onion layer
+var onion = document.createElement("canvas");
+onion.id = "onion";
+onion.height = canvas.height;
+onion.width = canvas.width;
+onion.style.marginLeft = Math.floor(windowW / 2 - canvas.width / 2) + "px";
+onion.style.marginTop = Math.floor(windowH / 2.5 - canvas.height / 2) + "px";
+onion.style.position = "absolute";
+onion.style.zIndex = -1;
+onion.style.opacity = "0.2";
+playground.appendChild(onion);
+var onionCTX = onion.getContext('2d');
+
+
+//play button
+var playBtn = document.createElement("button");
+playBtn.id = "play";
+playBtn.width = 50;
+playBtn.height = 50;
+playBtn.style.fontSize = "50px";
+playBtn.style.position = 'absolute';
+playBtn.innerHTML = '&#9651;'; //'<i class="fas fa-play"></i>';
+playBtn.style.transform = 'rotate(90deg)';
+playBtn.style.marginLeft =
+  Math.floor(windowW - canvas.width) / 2 +
+  (windowW - canvas.width) / 4 +
+  canvas.width -
+  playBtn.width / 2 +
+  "px";
+playBtn.style.marginTop =
+  Math.floor(windowH / 2 - playBtn.height / 2 - canvas.height / 4) + 10 + "px";
+playground.appendChild(playBtn);
+
+
+//timeline / frames
+var timeline = document.createElement("div");
+timeline.id = "timeline";
+timeline.width = 400;
+timeline.style.marginLeft = Math.floor(windowW / 2 - canvas.width / 2) + "px";
+timeline.style.marginTop = Math.floor(windowH / 2.5 - canvas.height / 2) + canvas.height + "px";
+playground.appendChild(timeline);
+timeline.style.position = 'absolute';
+
+
+//add btn wrapper
+var addBtnWrap = document.createElement("div");
+addBtnWrap.className = "frames";
+addBtnWrap.id = "addWrap";
+timeline.appendChild(addBtnWrap);
+
+//add button
+var addBtn = document.createElement("button");
+addBtn.id = "add";
+addBtn.innerHTML = '+';// '<i class="fas fa-plus"></i>';
+addBtnWrap.appendChild(addBtn);
+
+
+var trashBtn = document.createElement('button');
+trashBtn.id = "del";
+trashBtn.style.fontSize = "30px";
+trashBtn.style.position = "absolute";
+trashBtn.style.marginTop = "5px";
+trashBtn.style.marginLeft = "5px";
+trashBtn.width = 30;
+trashBtn.height = 30;
+trashBtn.innerHTML = '<i class="fa fa-trash"></i>';
+playground.appendChild(trashBtn);
+
+//handle orientation
+/*
+if (windowW < 450 && screen.orientation.angle != 90 || screen.orientation.angle != -90) {
+  console.log(screen.orientation.angle == 90);
+  console.log(windowW);
+  canvas.style.marginLeft = Math.floor(windowW / 2 - canvas.width / 2) + "px";
+  canvas.style.marginTop = Math.floor(windowH / 2 - canvas.height / 2) + "px";
+  document.body.appendChild(canvas);
+} else if (windowW < )
+*/
+
+//start drawing
+drawr.start({ id: "flipbook", w: canvas.width, h: canvas.height });
+drawr.draw("#000", 2);
+
+//delete frame
+/*
+del.addEventListener(
+  "click",
+  e => {
+    e.preventDefault();
+    drawr.clear({ id: "flipbook" });
+  },
+  false
+);
+*/
+
+//start app
+startBtn.addEventListener('click', e => {
+  e.preventDefault();
+  startBtn.blur();
+  
+  landing.style.display = "none";
+});
+
+//del all
+trashBtn.addEventListener('click', e => {
+  e.preventDefault();
+  trashBtn.blur();
+  
+  var sure = confirm("Are you sure you want to delete this project?");
+  if(!sure) return;
+  
+  var layers = document.getElementsByClassName('layers');
+  
+  while(layers[0]){
+    timeline.removeChild(layers[0]);
+  }
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  onionCTX.clearRect(0, 0, onion.width, onion.height);
+  if(playback){
+    playBtn.click();  
+  }
+  frames = [];
+})
+
+//add frame
+addBtn.addEventListener(
+  "click",
+  e => {
+    e.preventDefault();
+    addBtn.blur();
+    //move previous to onion layer
+    onionCTX.clearRect(0, 0, onion.width, onion.height);
+    onionCTX.drawImage(canvas, 0, 0);
+    
+    //new timeline frame
+    var newFrame = document.createElement("canvas");
+    newFrame.className = "frames layers";
+    newFrame.id = (frames.length != 0) ? frames.length + 1 : "1";
+    timeline.insertBefore(newFrame, addBtnWrap);
+    var newFrameCTX = newFrame.getContext('2d');
+    newFrameCTX.drawImage(canvas, 0, 0, canvas.width, canvas.height, 0, 0, newFrame.width, newFrame.height);
+    
+    newFrame.addEventListener("click", (e) => {
+      e.preventDefault();
+      console.log(newFrame.id);
+    });
+    
+    //store the drawing
+    frames.push(canvas.toDataURL("image/png"));
+    drawr.clear({ id: "flipbook" });
+  
+    //scroll to our newly added frame
+    addBtn.focus();
+    addBtn.blur();
+    console.log(frames.length);
+  },
+  false
+);
+
+//playback
+playBtn.addEventListener(
+  "click",
+  e => {
+    e.preventDefault();
+    playBtn.blur();
+    playBtn.innerHTML = '&#x25a0;';
+    playBtn.style.color = "#d10a0a";
+    
+    if (frames.length == 0) {
+      return;
+    }
+    
+    if(!playback){
+      playback = true;
+    } else {
+      playback = false;
+      clearInterval(playLoop);
+      mirror.remove();
+      playBtn.innerHTML = '&#9651;';
+      playBtn.style.color = "#000";
+      canvas.style.display = "block";
+      onion.style.display = "block";
+      return;
+    }
+    
+    
+    canvas.style.display = "none";
+    onion.style.display = "none";
+    mirror = document.createElement("img");
+    mirror.width = 400;
+    mirror.height = 200;
+    mirror.style.position = "absolute";
+    mirror.style.marginLeft = Math.floor(windowW / 2 - mirror.width / 2) + "px";
+    mirror.style.marginTop =
+      Math.floor(windowH / 2.5 - mirror.height / 2) + "px";
+    mirror.style.display = "block";
+    document.body.appendChild(mirror);
+
+    drawr.clear({ id: "flipbook" });
+
+    mirror.src = frames[0];
+    //ctx.drawImage(img, 10, 10);
+    var setFrame = 0;
+
+    playLoop = setInterval(() => {
+      mirror.src = frames[setFrame];
+      if (setFrame < frames.length - 1) {
+        setFrame += 1;
+      } else {
+        setFrame = 0;
+      }
+    }, 100);
+  },
+  false
+);
+    </script>
+</body>
+</html>
