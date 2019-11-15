@@ -1,0 +1,11 @@
+{
+  "name": "FLYPPR",
+  "short_name": "FLYPPR",
+  "description": "Draw and animate flipbooks!",
+  "icons": [{"src": "flyppr.png", "sizes": "32x32", "type": "image/png" }],
+  "display": "standalone",
+  "orientation": "landscape-secondary",
+  "start_url": "/",
+  "background_color": "#14b5ff",
+  "theme_color": "#14b5ff"
+}
