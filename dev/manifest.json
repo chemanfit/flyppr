@@ -3,7 +3,7 @@
   "short_name": "FLYPPR",
   "description": "Draw and animate flipbooks!",
   "icons": [{"src": "flyppr.png", "sizes": "32x32", "type": "image/png" },
-            {"src": "flyppr.png", "sizes": "192x192", "type": "image/png"}],
+            {"src": "flyppr192x192.png", "sizes": "192x192", "type": "image/png"}],
   "display": "standalone",
   "orientation": "landscape-secondary",
   "start_url": "/flyppr/dev/",
